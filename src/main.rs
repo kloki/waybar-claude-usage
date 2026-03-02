@@ -1,4 +1,4 @@
-use std::{error::Error, iter::repeat_n};
+use std::{error::Error, iter::repeat_n, time::Duration};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -50,7 +50,9 @@ fn get_usage() -> Result<UsageResponse, Box<dyn Error>> {
     let creds_text = std::fs::read_to_string(&creds_path)?;
     let creds: Credentials = serde_json::from_str(&creds_text)?;
 
-    let resp = reqwest::blocking::Client::new()
+    let resp = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()?
         .get("https://api.anthropic.com/api/oauth/usage")
         .header(
             "Authorization",
@@ -65,31 +67,19 @@ fn get_usage() -> Result<UsageResponse, Box<dyn Error>> {
     Ok(resp)
 }
 
-fn get_braille(number: usize) -> char {
-    match number {
-        0 => ' ',
-        1 => '⡀',
-        2 => '⡄',
-        3 => '⡆',
-        4 => '⡇',
-        5 => '⣇',
-        6 => '⣧',
-        7 => '⣷',
-        8 => '⣿',
-        _ => ' ',
-    }
-}
+const BRAILLE: [char; 9] = [' ', '⡀', '⡄', '⡆', '⡇', '⣇', '⣧', '⣷', '⣿'];
+const BAR_WIDTH: usize = 25;
 
 fn format_bar(pct: f64) -> String {
-    let perc = (pct.round() as usize).min(100);
-    let full = perc / 8;
-    let remainder = perc % 8;
+    let units = (pct.clamp(0.0, 100.0) / 100.0 * (BAR_WIDTH * 8) as f64).round() as usize;
+    let full = units / 8;
+    let remainder = units % 8;
     let partial = usize::from(remainder > 0);
-    let padding = 25 - full - partial;
+    let padding = BAR_WIDTH - full - partial;
 
-    repeat_n(get_braille(8), full)
-        .chain((remainder > 0).then(|| get_braille(remainder)))
-        .chain(repeat_n(get_braille(0), padding))
+    repeat_n(BRAILLE[8], full)
+        .chain((remainder > 0).then(|| BRAILLE[remainder]))
+        .chain(repeat_n(BRAILLE[0], padding))
         .collect()
 }
 fn format_text(usage: &UsageResponse) -> String {
@@ -160,12 +150,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_get_braille() {
-        assert_eq!(get_braille(0), ' ');
-        assert_eq!(get_braille(1), '⡀');
-        assert_eq!(get_braille(4), '⡇');
-        assert_eq!(get_braille(8), '⣿');
-        assert_eq!(get_braille(9), ' ');
+    fn test_braille() {
+        assert_eq!(BRAILLE[0], ' ');
+        assert_eq!(BRAILLE[1], '⡀');
+        assert_eq!(BRAILLE[4], '⡇');
+        assert_eq!(BRAILLE[8], '⣿');
+        assert_eq!(BRAILLE.len(), 9);
     }
 
     #[test]
@@ -240,8 +230,7 @@ mod tests {
             },
         };
         let text = format_text(&usage);
-        assert!(text.starts_with("✻ ["));
-        assert!(text.ends_with(']'));
+        assert_eq!(text, "✻ 50%");
     }
 
     #[test]
@@ -259,8 +248,8 @@ mod tests {
         let tooltip = format_tooltip(&usage);
         assert!(tooltip.contains("5-hour"));
         assert!(tooltip.contains("7-day"));
-        assert!(tooltip.contains("10%"), "expected percentage in tooltip");
-        assert!(tooltip.contains("20%"), "expected percentage in tooltip");
+        assert!(tooltip.contains("resets in"));
+        assert_eq!(tooltip.matches('\n').count(), 4);
     }
 
     #[test]
