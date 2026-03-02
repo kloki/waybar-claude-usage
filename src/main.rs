@@ -53,25 +53,6 @@ struct ExtraUsage {
     monthly_limit: Option<f64>,
 }
 
-fn make_braille_bar(pct: f64) -> String {
-    // 4 braille chars × 2 columns each = 8 columns to fill left-to-right
-    // Left column dots:  1,2,3,7 = 0x47 (⡇)
-    // Right column dots: 4,5,6,8 = 0xB8 (⢸)
-    // Both columns:      all     = 0xFF (⣿)
-    let cols = ((pct * 8.0 / 100.0).round() as usize).min(8);
-    let mut bar = String::new();
-    for i in 0..4 {
-        let filled_in_char = cols.saturating_sub(i * 2).min(2);
-        let bits: u32 = match filled_in_char {
-            2 => 0xFF,
-            1 => 0x47,
-            _ => 0x00,
-        };
-        bar.push(char::from_u32(0x2800 + bits).unwrap());
-    }
-    bar
-}
-
 fn make_bar(pct: f64) -> String {
     let filled = ((pct / 10.0).round() as usize).min(10);
     let empty = 10 - filled;
@@ -100,7 +81,7 @@ fn get_usage() -> Result<UsageResponse, Box<dyn Error>> {
 }
 
 fn format_text(usage: &UsageResponse) -> String {
-    format!("✻ {}", make_braille_bar(usage.five_hour.utilization))
+    format!("✻ {:.0}%", usage.five_hour.utilization)
 }
 
 fn format_resets_in(resets_at: &str) -> String {
