@@ -93,7 +93,7 @@ fn format_bar(pct: f64) -> String {
         .collect()
 }
 fn format_text(usage: &UsageResponse) -> String {
-    format!("✻ [{}]", format_bar(usage.five_hour.utilization))
+    format!("✻ {:.0}%", usage.five_hour.utilization)
 }
 
 fn format_resets_in(resets_at: &str) -> String {
@@ -117,8 +117,7 @@ fn format_resets_in(resets_at: &str) -> String {
 
 fn format_window(label: &str, window: &Window) -> String {
     format!(
-        "{label}  {:.0}%  resets in {}\n[{}]",
-        window.utilization,
+        "{label} resets in {}\n{}",
         format_resets_in(&window.resets_at),
         format_bar(window.utilization),
     )
