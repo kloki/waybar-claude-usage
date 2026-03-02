@@ -2,11 +2,17 @@
 
 A Claude Code usage module for [waybar](https://github.com/Alexays/Waybar) that works for me.
 
-Install
+# Install
 
 ```bash
 cargo install waybar-claude-usage
 ```
+
+## Binaries
+
+Check [Releases](https://github.com/kloki/waybar-claude-usage/releases) for binaries and installers
+
+# Configure
 
 Add this to your `config.jsonc`
 
@@ -15,7 +21,7 @@ Add this to your `config.jsonc`
   "custom/claude": {
     "exec": "~/.cargo/bin/waybar-claude-usage",
     "return-type": "json",
-    "interval": 30
+    "interval": 120
   }
 }
 ```
