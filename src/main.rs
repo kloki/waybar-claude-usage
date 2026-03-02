@@ -53,10 +53,22 @@ struct ExtraUsage {
     monthly_limit: Option<f64>,
 }
 
-fn make_bar(pct: f64) -> String {
-    let filled = ((pct / 10.0).round() as usize).min(10);
-    let empty = 10 - filled;
-    format!("{}{}", "󰄮 ".repeat(filled), "󰄱 ".repeat(empty))
+fn make_grid(pct: f64) -> String {
+    let filled = (pct.round() as usize).min(100);
+    let mut rows = Vec::new();
+    for row in 0..10 {
+        let mut cells = Vec::new();
+        for col in 0..10 {
+            let idx = row * 10 + col;
+            if idx < filled {
+                cells.push("󰄮");
+            } else {
+                cells.push("󰄱");
+            }
+        }
+        rows.push(cells.join(" "));
+    }
+    rows.join("\n")
 }
 
 fn get_usage() -> Result<UsageResponse, Box<dyn Error>> {
@@ -104,41 +116,23 @@ fn format_resets_in(resets_at: &str) -> String {
 }
 
 fn format_tooltip(usage: &UsageResponse) -> String {
-    let mut lines = vec![
-        format!(
-            "5-hour  {}  {:.0}%",
-            make_bar(usage.five_hour.utilization),
-            usage.five_hour.utilization
-        ),
-        format!(
-            "Resets  in {}",
-            format_resets_in(&usage.five_hour.resets_at)
-        ),
-        format!(
-            "7-day   {}  {:.0}%",
-            make_bar(usage.seven_day.utilization),
-            usage.seven_day.utilization
-        ),
-        format!(
-            "Resets  in {}",
-            format_resets_in(&usage.seven_day.resets_at)
-        ),
-    ];
+    let mut sections = Vec::new();
 
-    if usage.extra_usage.is_enabled {
-        let pct = usage.extra_usage.utilization.unwrap_or(0.0);
-        let used = usage.extra_usage.used_credits.unwrap_or(0.0) / 100.0;
-        let limit = usage.extra_usage.monthly_limit.unwrap_or(0.0) / 100.0;
-        lines.push(format!(
-            "Extra   {}  {:.0}% (${used:.2}/${limit:.2})",
-            make_bar(pct),
-            pct
-        ));
-    } else {
-        lines.push("Extra   disabled".to_string());
-    }
+    sections.push(format!(
+        "5-hour  {:.0}%  (resets in {})\n{}",
+        usage.five_hour.utilization,
+        format_resets_in(&usage.five_hour.resets_at),
+        make_grid(usage.five_hour.utilization),
+    ));
 
-    lines.join("\n")
+    sections.push(format!(
+        "7-day  {:.0}%  (resets in {})\n{}",
+        usage.seven_day.utilization,
+        format_resets_in(&usage.seven_day.resets_at),
+        make_grid(usage.seven_day.utilization),
+    ));
+
+    sections.join("\n\n")
 }
 
 fn build_module() -> Result<WaybarModule, Box<dyn Error>> {
