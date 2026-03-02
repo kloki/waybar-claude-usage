@@ -2,6 +2,9 @@
 name = "waybar-claude-usage"
 version = "0.1.0"
 edition = "2024"
+description = "Waybar plugin that shows you usage window for claude"
+license = "MIT"
+repository = "https://github.com/kloki/waybar-claude-usage"
 
 [dependencies]
 chrono = "0.4"
