@@ -36,21 +36,12 @@ struct OAuthToken {
 struct UsageResponse {
     five_hour: Window,
     seven_day: Window,
-    extra_usage: ExtraUsage,
 }
 
 #[derive(Deserialize)]
 struct Window {
     utilization: f64,
     resets_at: String,
-}
-
-#[derive(Deserialize)]
-struct ExtraUsage {
-    is_enabled: bool,
-    utilization: Option<f64>,
-    used_credits: Option<f64>,
-    monthly_limit: Option<f64>,
 }
 
 fn make_grid(pct: f64) -> String {
