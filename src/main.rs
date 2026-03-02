@@ -1,5 +1,6 @@
 use std::error::Error;
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Default)]
@@ -52,10 +53,29 @@ struct ExtraUsage {
     monthly_limit: Option<f64>,
 }
 
+fn make_braille_bar(pct: f64) -> String {
+    // 4 braille chars × 2 columns each = 8 columns to fill left-to-right
+    // Left column dots:  1,2,3,7 = 0x47 (⡇)
+    // Right column dots: 4,5,6,8 = 0xB8 (⢸)
+    // Both columns:      all     = 0xFF (⣿)
+    let cols = ((pct * 8.0 / 100.0).round() as usize).min(8);
+    let mut bar = String::new();
+    for i in 0..4 {
+        let filled_in_char = cols.saturating_sub(i * 2).min(2);
+        let bits: u32 = match filled_in_char {
+            2 => 0xFF,
+            1 => 0x47,
+            _ => 0x00,
+        };
+        bar.push(char::from_u32(0x2800 + bits).unwrap());
+    }
+    bar
+}
+
 fn make_bar(pct: f64) -> String {
     let filled = ((pct / 10.0).round() as usize).min(10);
     let empty = 10 - filled;
-    format!("{}{}", "▰".repeat(filled), "▱".repeat(empty))
+    format!("{}{}", "󰄮 ".repeat(filled), "󰄱 ".repeat(empty))
 }
 
 fn get_usage() -> Result<UsageResponse, Box<dyn Error>> {
@@ -80,7 +100,26 @@ fn get_usage() -> Result<UsageResponse, Box<dyn Error>> {
 }
 
 fn format_text(usage: &UsageResponse) -> String {
-    format!("✻ {}", make_bar(usage.five_hour.utilization))
+    format!("✻ {}", make_braille_bar(usage.five_hour.utilization))
+}
+
+fn format_resets_in(resets_at: &str) -> String {
+    let Ok(reset_time) = resets_at.parse::<DateTime<Utc>>() else {
+        return resets_at.to_string();
+    };
+    let duration = reset_time - Utc::now();
+    let total_minutes = duration.num_minutes().max(0);
+    let hours = total_minutes / 60;
+    let minutes = total_minutes % 60;
+    if hours >= 24 {
+        let days = hours / 24;
+        let remaining_hours = hours % 24;
+        format!("{days}d {remaining_hours}h")
+    } else if hours > 0 {
+        format!("{hours}h {minutes}m")
+    } else {
+        format!("{minutes}m")
+    }
 }
 
 fn format_tooltip(usage: &UsageResponse) -> String {
@@ -90,13 +129,19 @@ fn format_tooltip(usage: &UsageResponse) -> String {
             make_bar(usage.five_hour.utilization),
             usage.five_hour.utilization
         ),
-        format!("Resets  {}", usage.five_hour.resets_at),
+        format!(
+            "Resets  in {}",
+            format_resets_in(&usage.five_hour.resets_at)
+        ),
         format!(
             "7-day   {}  {:.0}%",
             make_bar(usage.seven_day.utilization),
             usage.seven_day.utilization
         ),
-        format!("Resets  {}", usage.seven_day.resets_at),
+        format!(
+            "Resets  in {}",
+            format_resets_in(&usage.seven_day.resets_at)
+        ),
     ];
 
     if usage.extra_usage.is_enabled {
