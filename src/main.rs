@@ -127,7 +127,7 @@ fn format_window(label: &str, window: &Window) -> String {
 fn format_tooltip(usage: &UsageResponse) -> String {
     [
         format_window("5-hour", &usage.five_hour),
-        format_window("7-day", &usage.seven_day),
+        format_window("7-day ", &usage.seven_day),
     ]
     .join("\n\n")
 }
