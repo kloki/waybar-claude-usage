@@ -68,10 +68,10 @@ fn get_usage() -> Result<UsageResponse, Box<dyn Error>> {
 }
 
 const BRAILLE: [char; 9] = [' ', '⡀', '⡄', '⡆', '⡇', '⣇', '⣧', '⣷', '⣿'];
-const BAR_WIDTH: usize = 25;
+const BAR_WIDTH: usize = 13;
 
 fn format_bar(pct: f64) -> String {
-    let units = (pct.clamp(0.0, 100.0) / 100.0 * (BAR_WIDTH * 8) as f64).round() as usize;
+    let units = pct.clamp(0.0, 100.0).round() as usize;
     let full = units / 8;
     let remainder = units % 8;
     let partial = usize::from(remainder > 0);
@@ -161,14 +161,15 @@ mod tests {
     #[test]
     fn test_format_bar_zero() {
         let bar = format_bar(0.0);
-        assert_eq!(bar.chars().count(), 25);
+        assert_eq!(bar.chars().count(), 13);
         assert!(bar.chars().all(|c| c == ' '));
     }
 
     #[test]
     fn test_format_bar_full() {
         let bar = format_bar(100.0);
-        assert_eq!(bar.chars().count(), 25);
+        assert_eq!(bar.chars().count(), 13);
+        assert_eq!(bar, "⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇")
     }
 
     #[test]
@@ -176,7 +177,7 @@ mod tests {
         for pct in [0.0, 1.0, 25.0, 50.0, 75.0, 99.0, 100.0] {
             assert_eq!(
                 format_bar(pct).chars().count(),
-                25,
+                13,
                 "bar width wrong at {pct}%"
             );
         }

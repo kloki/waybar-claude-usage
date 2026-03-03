@@ -1,6 +1,6 @@
 [package]
 name = "waybar-claude-usage"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2024"
 description = "Waybar plugin that shows you usage window for claude"
 license = "MIT"
