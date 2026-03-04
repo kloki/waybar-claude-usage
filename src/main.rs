@@ -1,7 +1,16 @@
 use std::{error::Error, iter::repeat_n, time::Duration};
 
 use chrono::{DateTime, Utc};
+use clap::Parser;
 use serde::{Deserialize, Serialize};
+
+#[derive(Parser)]
+#[command(about = "Waybar module showing Claude usage")]
+struct Args {
+    /// Show a braille bar instead of percentage in the text
+    #[arg(long)]
+    bar: bool,
+}
 
 #[derive(Serialize, Default)]
 struct WaybarModule {
@@ -82,8 +91,12 @@ fn format_bar(pct: f64) -> String {
         .chain(repeat_n(BRAILLE[0], padding))
         .collect()
 }
-fn format_text(usage: &UsageResponse) -> String {
-    format!("✻ {:.0}%", usage.five_hour.utilization)
+fn format_text(usage: &UsageResponse, bar: bool) -> String {
+    if bar {
+        format!("✻ {}", format_bar(usage.five_hour.utilization))
+    } else {
+        format!("✻ {:.0}%", usage.five_hour.utilization)
+    }
 }
 
 fn format_resets_in(resets_at: &str) -> String {
@@ -107,7 +120,8 @@ fn format_resets_in(resets_at: &str) -> String {
 
 fn format_window(label: &str, window: &Window) -> String {
     format!(
-        "{label} resets in {}\n{}",
+        "{label} {:.0}% resets in {}\n{}",
+        window.utilization,
         format_resets_in(&window.resets_at),
         format_bar(window.utilization),
     )
@@ -123,20 +137,14 @@ fn format_tooltip(usage: &UsageResponse) -> String {
 
 fn error_module(err: &dyn Error) -> WaybarModule {
     let msg = err.to_string();
-    let class = if msg.contains("credentials") || msg.contains("No such file") {
-        "error-auth"
-    } else if msg.contains("error trying to connect") || msg.contains("timed out") {
-        "error-network"
-    } else {
-        "error"
-    };
-    WaybarModule::new("✻ err".to_string(), msg, class.to_string())
+    WaybarModule::new("✻ ?".to_string(), msg, "claude".to_string())
 }
 
 fn main() {
+    let args = Args::parse();
     let module = match get_usage() {
         Ok(usage) => WaybarModule::new(
-            format_text(&usage),
+            format_text(&usage, args.bar),
             format_tooltip(&usage),
             "claude".to_string(),
         ),
@@ -230,8 +238,12 @@ mod tests {
                 resets_at: "2099-01-01T00:00:00Z".to_string(),
             },
         };
-        let text = format_text(&usage);
+        let text = format_text(&usage, false);
         assert_eq!(text, "✻ 50%");
+
+        let text_bar = format_text(&usage, true);
+        assert!(text_bar.starts_with("✻ "), "expected bar format in '{text_bar}'");
+        assert!(!text_bar.contains('%'), "bar mode should not contain '%'");
     }
 
     #[test]
@@ -276,25 +288,9 @@ mod tests {
 
     #[test]
     fn test_error_module_auth() {
-        let err: Box<dyn Error> = "No such file or directory".into();
+        let err: Box<dyn Error> = "err".into();
         let module = error_module(err.as_ref());
-        assert_eq!(module.class, "error-auth");
-        assert_eq!(module.text, "✻ err");
-    }
-
-    #[test]
-    fn test_error_module_network() {
-        let err: Box<dyn Error> = "error trying to connect".into();
-        let module = error_module(err.as_ref());
-        assert_eq!(module.class, "error-network");
-    }
-
-    #[test]
-    fn test_error_module_generic() {
-        let err: Box<dyn Error> = "something unexpected".into();
-        let module = error_module(err.as_ref());
-        assert_eq!(module.class, "error");
-        assert!(module.tooltip.contains("something unexpected"));
+        assert_eq!(module.text, "✻ ?");
     }
 
     #[test]
