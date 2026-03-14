@@ -1,5 +1,6 @@
-use std::{error::Error, iter::repeat_n, time::Duration};
+use std::{error::Error, time::Duration};
 
+use braille_bar::braille_bar;
 use chrono::{DateTime, Utc};
 use clap::Parser;
 use serde::{Deserialize, Serialize};
@@ -76,24 +77,9 @@ fn get_usage() -> Result<UsageResponse, Box<dyn Error>> {
     Ok(resp)
 }
 
-const BRAILLE: [char; 9] = [' ', '⡀', '⡄', '⡆', '⡇', '⣇', '⣧', '⣷', '⣿'];
-const BAR_WIDTH: usize = 13;
-
-fn format_bar(pct: f64) -> String {
-    let units = pct.clamp(0.0, 100.0).round() as usize;
-    let full = units / 8;
-    let remainder = units % 8;
-    let partial = usize::from(remainder > 0);
-    let padding = BAR_WIDTH - full - partial;
-
-    repeat_n(BRAILLE[8], full)
-        .chain((remainder > 0).then(|| BRAILLE[remainder]))
-        .chain(repeat_n(BRAILLE[0], padding))
-        .collect()
-}
 fn format_text(usage: &UsageResponse, bar: bool) -> String {
     if bar {
-        format!("✻ {}", format_bar(usage.five_hour.utilization))
+        format!("✻ {}", braille_bar(usage.five_hour.utilization))
     } else {
         format!("✻ {:.0}%", usage.five_hour.utilization)
     }
@@ -123,7 +109,7 @@ fn format_window(label: &str, window: &Window) -> String {
         "{label} {:.0}% resets in {}\n{}",
         window.utilization,
         format_resets_in(&window.resets_at),
-        format_bar(window.utilization),
+        braille_bar(window.utilization),
     )
 }
 
@@ -156,45 +142,6 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_braille() {
-        assert_eq!(BRAILLE[0], ' ');
-        assert_eq!(BRAILLE[1], '⡀');
-        assert_eq!(BRAILLE[4], '⡇');
-        assert_eq!(BRAILLE[8], '⣿');
-        assert_eq!(BRAILLE.len(), 9);
-    }
-
-    #[test]
-    fn test_format_bar_zero() {
-        let bar = format_bar(0.0);
-        assert_eq!(bar.chars().count(), 13);
-        assert!(bar.chars().all(|c| c == ' '));
-    }
-
-    #[test]
-    fn test_format_bar_full() {
-        let bar = format_bar(100.0);
-        assert_eq!(bar.chars().count(), 13);
-        assert_eq!(bar, "⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇")
-    }
-
-    #[test]
-    fn test_format_bar_consistent_width() {
-        for pct in [0.0, 1.0, 25.0, 50.0, 75.0, 99.0, 100.0] {
-            assert_eq!(
-                format_bar(pct).chars().count(),
-                13,
-                "bar width wrong at {pct}%"
-            );
-        }
-    }
-
-    #[test]
-    fn test_format_bar_clamps_above_100() {
-        assert_eq!(format_bar(150.0), format_bar(100.0));
-    }
 
     #[test]
     fn test_format_resets_in_invalid() {
@@ -242,7 +189,10 @@ mod tests {
         assert_eq!(text, "✻ 50%");
 
         let text_bar = format_text(&usage, true);
-        assert!(text_bar.starts_with("✻ "), "expected bar format in '{text_bar}'");
+        assert!(
+            text_bar.starts_with("✻ "),
+            "expected bar format in '{text_bar}'"
+        );
         assert!(!text_bar.contains('%'), "bar mode should not contain '%'");
     }
 

@@ -92,6 +92,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "843867be96c8daad0d758b57df9392b6d8d271134fce549de6ce169ff98a92af"
 
 [[package]]
+name = "braille-bar"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "447d4aab853b9b1c81da0655e3d4420b55e3800b84d709601bb0787c19a76f7a"
+
+[[package]]
 name = "bumpalo"
 version = "3.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1524,8 +1530,9 @@ dependencies = [
 
 [[package]]
 name = "waybar-claude-usage"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
+ "braille-bar",
  "chrono",
  "clap",
  "reqwest",
